@@ -247,17 +247,20 @@ class FirebaseService:
             return logs
 
         logs_ref = self._db.collection('daily_logs')
-        query = logs_ref.where('patient_id', '==', patient_id).order_by('date', direction=firestore.Query.DESCENDING)
-        
+        # Filter only — no order_by so no composite index is required
+        query = logs_ref.where('patient_id', '==', patient_id)
+
         if limit:
             query = query.limit(limit)
-        
+
         logs = []
         for doc in query.stream():
             log_data = doc.to_dict()
             log_data['id'] = doc.id
             logs.append(log_data)
-        
+
+        # Sort by date descending in Python (avoids Firestore composite index)
+        logs.sort(key=lambda x: x.get('date', ''), reverse=True)
         return logs
     
     def get_recent_patient_logs(self, patient_id: str, count: int = 3) -> list:
@@ -317,14 +320,24 @@ class FirebaseService:
             return candidates[0]
 
         scores_ref = self._db.collection('risk_scores')
-        query = scores_ref.where('patient_id', '==', patient_id).order_by('score', direction=firestore.Query.DESCENDING).limit(1)
-        
+        # Filter only, sort in Python — avoids needing a composite index
+        query = scores_ref.where('patient_id', '==', patient_id)
+
+        candidates = []
         for doc in query.stream():
             score_data = doc.to_dict()
             score_data['id'] = doc.id
-            return score_data
-        
-        return None
+            candidates.append(score_data)
+
+        if not candidates:
+            return None
+
+        # Sort by timestamp if available, otherwise by score
+        candidates.sort(
+            key=lambda x: str(x.get('timestamp', x.get('score', 0))),
+            reverse=True
+        )
+        return candidates[0]
     
     # Discharge document operations
     def create_discharge_document(self, doc_data: dict) -> str:
@@ -366,14 +379,15 @@ class FirebaseService:
             return documents
 
         docs_ref = self._db.collection('discharge_documents')
-        query = docs_ref.where('patient_id', '==', patient_id).stream()
-        
+        # Fixed: only one .stream() call (was accidentally called twice)
+        query = docs_ref.where('patient_id', '==', patient_id)
+
         documents = []
         for doc in query.stream():
             doc_data = doc.to_dict()
             doc_data['id'] = doc.id
             documents.append(doc_data)
-        
+
         return documents
     
     # Doctor operations
@@ -397,14 +411,15 @@ class FirebaseService:
             return patients
 
         users_ref = self._db.collection('users')
-        query = users_ref.where('assigned_doctor_id', '==', doctor_id).where('role', '==', 'patient').stream()
-        
+        # Fixed: only one .stream() call (was accidentally called twice)
+        query = users_ref.where('assigned_doctor_id', '==', doctor_id).where('role', '==', 'patient')
+
         patients = []
         for doc in query.stream():
             patient_data = doc.to_dict()
             patient_data['id'] = doc.id
             patients.append(patient_data)
-        
+
         return patients
     
     # Storage operations

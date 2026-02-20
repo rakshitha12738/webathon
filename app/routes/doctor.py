@@ -83,14 +83,19 @@ def get_patient_details(patient_id):
         # Get latest risk score
         latest_risk = firebase.get_latest_risk_score(patient_id)
         
-        # Get all risk scores
+        # Get all risk scores — filter only, sort in Python (avoids composite index requirement)
         risk_scores_ref = firebase.db.collection('risk_scores')
-        risk_scores_query = risk_scores_ref.where('patient_id', '==', patient_id).order_by('timestamp', direction=firestore.Query.DESCENDING).limit(10)
+        risk_scores_query = risk_scores_ref.where('patient_id', '==', patient_id).limit(10)
         all_risk_scores = []
         for doc in risk_scores_query.stream():
             score_data = doc.to_dict()
             score_data['id'] = doc.id
             all_risk_scores.append(score_data)
+        # Sort descending by timestamp (or score as fallback)
+        all_risk_scores.sort(
+            key=lambda x: str(x.get('timestamp', x.get('score', 0))),
+            reverse=True
+        )
         
         # Calculate complication index (use latest if available)
         complication_index = latest_risk.get('complication_index', 0) if latest_risk else 0

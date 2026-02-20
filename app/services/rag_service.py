@@ -9,8 +9,22 @@ from sentence_transformers import SentenceTransformer
 from app.utils.config import Config
 from app.services.firebase_service import FirebaseService
 
+# Danger keywords that always trigger alert_flag regardless of context
+DANGER_KEYWORDS = [
+    'emergency', 'urgent', 'severe', 'immediately', 'danger',
+    'critical', 'call 911', '999', 'ambulance', 'chest pain',
+    'difficulty breathing', "can't breathe", 'unconscious', 'collapse',
+    'heart attack', 'stroke', 'haemorrhage', 'hemorrhage'
+]
+
+def _is_danger(*texts) -> bool:
+    """Return True if any danger keyword appears in any of the provided text strings."""
+    combined = ' '.join(str(t).lower() for t in texts)
+    return any(kw in combined for kw in DANGER_KEYWORDS)
+
+
 class RAGService:
-    """RAG service for document retrieval and question answering via Gemini"""
+    """RAG service for document retrieval and question answering via Gemini 2.0 Flash"""
 
     def __init__(self):
         self.firebase = FirebaseService()
@@ -32,14 +46,14 @@ class RAGService:
         # ── Sentence Transformer embeddings ──────────────────────────────────
         self.embedding_model = SentenceTransformer(Config.EMBEDDING_MODEL)
 
-        # ── Gemini ────────────────────────────────────────────────────────────
+        # ── Gemini 2.0 Flash ──────────────────────────────────────────────────
         self.gemini_model = None
         if Config.GEMINI_API_KEY and Config.GEMINI_API_KEY != 'your-gemini-api-key-here':
             try:
                 import google.generativeai as genai
                 genai.configure(api_key=Config.GEMINI_API_KEY)
-                self.gemini_model = genai.GenerativeModel("gemini-1.5-flash")
-                print("[INFO] Gemini model initialised (gemini-1.5-flash)")
+                self.gemini_model = genai.GenerativeModel("gemini-2.0-flash")
+                print("[INFO] Gemini model initialised (gemini-2.0-flash)")
             except Exception as e:
                 print(f"[WARNING] Could not initialise Gemini: {e}")
         else:
@@ -124,9 +138,9 @@ class RAGService:
         })
 
         return {
-            'document_id':    doc_id,
+            'document_id':      doc_id,
             'chunks_processed': len(chunks),
-            'status':         'success'
+            'status':           'success'
         }
 
     # ── Retrieval ──────────────────────────────────────────────────────────────
@@ -146,14 +160,13 @@ class RAGService:
     # ── Generation ─────────────────────────────────────────────────────────────
     def generate_answer(self, question: str, context_chunks: list) -> dict:
         """
-        Generate an answer using Gemini given the context chunks.
-        Falls back to a summary of the raw chunks if Gemini is unavailable.
+        Generate a RAG answer using Gemini 2.0 Flash given the context chunks.
+        alert_flag is True if danger keywords appear in the question OR context.
+        Falls back to raw context snippet if Gemini is unavailable.
         """
-        context = "\n\n".join(context_chunks)
-
-        # Danger keyword check for alert_flag
-        danger_keywords = ['emergency', 'urgent', 'severe', 'immediately', 'danger', 'critical', 'call 911', '999', 'ambulance']
-        alert_flag = any(kw in context.lower() for kw in danger_keywords)
+        context    = "\n\n".join(context_chunks)
+        # Check BOTH question and context for danger signals
+        alert_flag = _is_danger(question, context)
 
         # ── Gemini path ───────────────────────────────────────────────────────
         if self.gemini_model:
@@ -161,6 +174,7 @@ class RAGService:
 Answer the patient's question based ONLY on the context extracted from their discharge documents below.
 If the information is not available in the context, say: "I cannot find that in your discharge documents – please contact your doctor directly."
 Do not invent or guess any medical information.
+If the question contains signs of a medical emergency, start your answer with a clear emergency warning.
 
 --- DISCHARGE DOCUMENT CONTEXT ---
 {context}
@@ -172,48 +186,71 @@ Provide a clear, concise, helpful answer:"""
 
             try:
                 response = self.gemini_model.generate_content(prompt)
-                answer = response.text.strip()
+                answer   = response.text.strip()
                 return {'answer': answer, 'alert_flag': alert_flag, 'source': 'gemini'}
             except Exception as e:
                 print(f"[ERROR] Gemini generation failed: {e}")
                 # fall through to fallback
 
         # ── Fallback path ─────────────────────────────────────────────────────
-        snippet   = context[:600]
-        fallback  = (
-            f"Based on your discharge documents, here is the most relevant information:\n\n"
+        snippet  = context[:600]
+        fallback = (
+            f"Based on your discharge documents:\n\n"
             f"{snippet}{'...' if len(context) > 600 else ''}\n\n"
             "Please consult your doctor if you need personalised medical advice."
         )
         return {'answer': fallback, 'alert_flag': alert_flag, 'source': 'fallback'}
 
-    # ── Direct Gemini chat (no RAG context, for general questions) ─────────────
+    # ── General Q&A (no discharge docs available) ─────────────────────────────
     def answer_general_question(self, question: str) -> dict:
-        """Use Gemini for general recovery questions when no discharge docs are available."""
+        """
+        Use Gemini 2.0 Flash for general recovery questions when no discharge docs are
+        available for this patient. alert_flag always checked against the question.
+        """
+        # Always evaluate danger in the question itself
+        alert_flag = _is_danger(question)
+
         if not self.gemini_model:
             return {
                 'answer': (
                     "I don't have your discharge documents on file yet. "
-                    "Please ask your doctor to upload them, or contact your healthcare provider for personalised guidance."
+                    "Please ask your doctor to upload them, or contact your healthcare provider "
+                    "for personalised guidance."
                 ),
-                'alert_flag': False,
+                'alert_flag': alert_flag,
                 'source': 'no_docs'
             }
 
-        prompt = f"""You are a supportive medical recovery assistant. The patient has asked a general recovery question.
-Provide helpful, responsible general guidance. Always remind the patient to follow their doctor's specific instructions.
-Do not provide specific diagnoses or prescribe medication.
+        # Emergency override — if danger detected, always surface it
+        emergency_prefix = ""
+        if alert_flag:
+            emergency_prefix = (
+                "🚨 **EMERGENCY WARNING**: Your question contains signs of a potential medical emergency. "
+                "Please call emergency services (911 / 999) or go to your nearest A&E immediately "
+                "if you are experiencing a life-threatening situation.\n\n"
+            )
+
+        prompt = f"""You are a supportive medical recovery assistant.
+The patient has asked a general recovery question (no discharge documents are on file).
+Provide helpful, responsible guidance based on standard post-surgical recovery best practices.
+Always advise the patient to follow their doctor's specific instructions.
+Do not diagnose or prescribe medication.
+If the question suggests a medical emergency, state clearly that they must seek immediate care.
 
 Question: {question}"""
 
         try:
-            response  = self.gemini_model.generate_content(prompt)
-            answer    = response.text.strip()
-            alert_flag = any(kw in answer.lower() for kw in ['emergency','severe','call 911','call 999','ambulance'])
+            response   = self.gemini_model.generate_content(prompt)
+            answer     = emergency_prefix + response.text.strip()
+            # Re-check alert_flag against Gemini's answer too
+            alert_flag = alert_flag or _is_danger(response.text)
             return {'answer': answer, 'alert_flag': alert_flag, 'source': 'gemini_general'}
         except Exception as e:
             return {
-                'answer': f"I encountered an issue. Please contact your doctor directly. ({e})",
-                'alert_flag': False,
+                'answer': (
+                    f"{emergency_prefix}I encountered an issue connecting to the AI. "
+                    "Please contact your doctor directly."
+                ),
+                'alert_flag': alert_flag,
                 'source': 'error'
             }
