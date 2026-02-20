@@ -57,4 +57,6 @@ export const api = {
     // Doctor
     getPatients: () => fetchWithAuth('/doctor/patients'),
     getPatientDetails: (id) => fetchWithAuth(`/doctor/patient/${id}`),
+    getAlerts: (status = 'unread') => fetchWithAuth(`/doctor/alerts?status=${status}`),
+    markAlertRead: (alertId) => fetchWithAuth(`/doctor/alerts/${alertId}/read`, { method: 'POST' }),
 };

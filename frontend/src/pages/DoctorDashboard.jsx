@@ -38,8 +38,30 @@ export default function DoctorDashboard() {
     const [uploadFile, setUploadFile] = useState(null)
     const [uploading, setUploading] = useState(false)
     const [uploadResult, setUploadResult] = useState(null)
+    const [alerts, setAlerts] = useState([])
+    const [alertsLoading, setAlertsLoading] = useState(false)
 
-    useEffect(() => { loadPatients() }, [])
+    useEffect(() => { loadPatients(); loadAlerts() }, [])
+
+    const loadAlerts = async () => {
+        setAlertsLoading(true)
+        try {
+            const d = await api.getAlerts('unread')
+            setAlerts(d.alerts || [])
+        } catch (e) {
+            console.error('Failed to load alerts:', e)
+            setAlerts([])
+        } finally { setAlertsLoading(false) }
+    }
+
+    const handleMarkAlertRead = async (alertId) => {
+        try {
+            await api.markAlertRead(alertId)
+            loadAlerts()
+        } catch (e) {
+            console.error('Failed to mark alert read:', e)
+        }
+    }
 
     const loadPatients = async () => {
         setLoading(true)
@@ -137,7 +159,67 @@ export default function DoctorDashboard() {
                                 <h1>Patient Roster</h1>
                                 <p className="page-header-sub">Monitoring {totalPatients} active recovery cases</p>
                             </div>
-                            <button className="btn btn-secondary" onClick={loadPatients}>🔄 Refresh</button>
+                            <button className="btn btn-secondary" onClick={() => { loadPatients(); loadAlerts() }}>🔄 Refresh</button>
+                        </div>
+
+                        {/* ═══ ALERTS BANNER — between Patient Roster header and Summary Stats ═══ */}
+                        <div
+                            data-alerts="true"
+                            role="region"
+                            aria-label="Alerts"
+                            style={{
+                                display: 'block',
+                                visibility: 'visible',
+                                minHeight: 80,
+                                marginBottom: 24,
+                                background: alerts.length > 0
+                                    ? 'linear-gradient(135deg, #991b1b 0%, #b91c1c 100%)'
+                                    : 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)',
+                                border: alerts.length > 0 ? '2px solid #dc2626' : '3px solid #d97706',
+                                borderRadius: 12,
+                                padding: '20px 24px',
+                                boxShadow: '0 4px 12px rgba(0,0,0,.15)',
+                            }}
+                        >
+                            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 }}>
+                                <div style={{ flex: 1 }}>
+                                    <h3 style={{ color: alerts.length > 0 ? '#fff' : '#92400e', fontSize: 18, fontWeight: 700, marginBottom: 8 }}>
+                                        ⚠ Alerts {alerts.length > 0 && `(${alerts.length} patient${alerts.length !== 1 ? 's' : ''} need immediate attention)`}
+                                    </h3>
+                                    {alerts.length > 0 ? (
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                            {alerts.map((a) => (
+                                                <div
+                                                    key={a.id}
+                                                    style={{
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'space-between',
+                                                        padding: '10px 14px',
+                                                        background: 'rgba(255,255,255,.12)',
+                                                        borderRadius: 8,
+                                                        color: 'rgba(255,255,255,.95)',
+                                                        fontSize: 14,
+                                                    }}
+                                                >
+                                                    <span>⚠ {a.message}</span>
+                                                    <button
+                                                        onClick={() => handleMarkAlertRead(a.id)}
+                                                        className="btn btn-secondary"
+                                                        style={{ fontSize: 12, padding: '6px 12px', background: 'rgba(255,255,255,.2)', color: '#fff', border: 'none' }}
+                                                    >
+                                                        Dismiss
+                                                    </button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <p style={{ color: '#78350f', fontSize: 14, margin: 0, fontWeight: 500 }}>
+                                            No patients need immediate attention. Alerts appear here when a patient has high risk for 3 consecutive days.
+                                        </p>
+                                    )}
+                                </div>
+                            </div>
                         </div>
 
                         {/* Summary Stats */}

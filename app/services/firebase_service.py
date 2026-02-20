@@ -39,7 +39,8 @@ class FirebaseService:
                         'recovery_profiles': {},
                         'daily_logs': {},
                         'risk_scores': {},
-                        'discharge_documents': {}
+                        'discharge_documents': {},
+                        'alerts': {}
                     }
                     return
 
@@ -60,7 +61,8 @@ class FirebaseService:
                 'recovery_profiles': {},
                 'daily_logs': {},
                 'risk_scores': {},
-                'discharge_documents': {}
+                'discharge_documents': {},
+                'alerts': {}
             }
     
     @property
@@ -421,6 +423,80 @@ class FirebaseService:
             patients.append(patient_data)
 
         return patients
+    
+    # Alert operations
+    def create_alert(self, alert_data: dict) -> str:
+        """
+        Create an alert for a doctor
+        
+        Args:
+            alert_data: Alert data (patientId, doctorId, message, status, createdAt)
+            
+        Returns:
+            Alert document ID
+        """
+        if getattr(self, '_in_memory', False):
+            aid = str(uuid.uuid4())
+            self._store['alerts'][aid] = dict(alert_data)
+            return aid
+
+        doc_ref = self._db.collection('alerts').document()
+        doc_ref.set(alert_data)
+        return doc_ref.id
+    
+    def get_doctor_alerts(self, doctor_id: str, status: str = None) -> list:
+        """
+        Get alerts for a doctor
+        
+        Args:
+            doctor_id: Doctor user ID
+            status: Optional filter for status ('unread' | 'read')
+            
+        Returns:
+            List of alert documents with IDs
+        """
+        if getattr(self, '_in_memory', False):
+            alerts = []
+            for aid, data in self._store['alerts'].items():
+                if data.get('doctorId') != doctor_id:
+                    continue
+                if status and data.get('status') != status:
+                    continue
+                out = dict(data)
+                out['id'] = aid
+                alerts.append(out)
+            alerts.sort(key=lambda x: str(x.get('createdAt', '')), reverse=True)
+            return alerts
+
+        alerts_ref = self._db.collection('alerts')
+        query = alerts_ref.where('doctorId', '==', doctor_id)
+        if status:
+            query = query.where('status', '==', status)
+
+        alerts = []
+        for doc in query.stream():
+            alert_data = doc.to_dict()
+            alert_data['id'] = doc.id
+            alerts.append(alert_data)
+
+        alerts.sort(key=lambda x: str(x.get('createdAt', '')), reverse=True)
+        return alerts
+    
+    def has_unread_alert_for_patient(self, doctor_id: str, patient_id: str) -> bool:
+        """
+        Check if there is already an unread alert for this patient (avoids duplicate alerts for same streak).
+        """
+        alerts = self.get_doctor_alerts(doctor_id, status='unread')
+        return any(a.get('patientId') == patient_id for a in alerts)
+    
+    def mark_alert_read(self, alert_id: str) -> None:
+        """Mark an alert as read"""
+        if getattr(self, '_in_memory', False):
+            if alert_id in self._store['alerts']:
+                self._store['alerts'][alert_id]['status'] = 'read'
+            return
+
+        self._db.collection('alerts').document(alert_id).update({'status': 'read'})
     
     # Storage operations
     def upload_file(self, file_path: str, destination_path: str) -> str:

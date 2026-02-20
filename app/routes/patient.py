@@ -74,6 +74,27 @@ def create_daily_log():
         # Create daily log
         log_id = firebase.create_daily_log(log_data)
         
+        # Alert: when at least one patient has 3 consecutive high-risk days, notify their doctor.
+        # Check if this patient's last 3 logs (including the one just created) are all high_risk.
+        recent_logs = firebase.get_recent_patient_logs(patient_id, count=3)
+        has_three_consecutive_high_risk = (
+            len(recent_logs) >= 3
+            and all(log.get('risk_status') == 'high_risk' for log in recent_logs[:3])
+        )
+        if has_three_consecutive_high_risk:
+            patient = firebase.get_user_by_id(patient_id)
+            doctor_id = patient.get('assigned_doctor_id') if patient else None
+            patient_name = patient.get('name', 'Patient') if patient else 'Patient'
+            if doctor_id and not firebase.has_unread_alert_for_patient(doctor_id, patient_id):
+                alert_data = {
+                    'patientId': patient_id,
+                    'doctorId': doctor_id,
+                    'message': f'⚠ Patient {patient_name} has been high risk for 3 consecutive days.',
+                    'createdAt': datetime.utcnow().isoformat() + 'Z',
+                    'status': 'unread'
+                }
+                firebase.create_alert(alert_data)
+        
         return jsonify({
             'message': 'Daily log created successfully',
             'log_id': log_id,

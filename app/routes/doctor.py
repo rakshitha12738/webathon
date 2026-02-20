@@ -120,3 +120,37 @@ def get_patient_details(patient_id):
     except Exception as e:
         return jsonify({'error': f'Failed to retrieve patient details: {str(e)}'}), 500
 
+
+@doctor_bp.route('/alerts', methods=['GET'])
+@token_required
+@role_required('doctor')
+def get_alerts():
+    """
+    Get unread alerts for the current doctor
+    """
+    try:
+        doctor_id = request.current_user['user_id']
+        status_filter = request.args.get('status', 'unread')
+
+        alerts = firebase.get_doctor_alerts(doctor_id, status=status_filter)
+
+        return jsonify({
+            'alerts': alerts,
+            'count': len(alerts)
+        }), 200
+
+    except Exception as e:
+        return jsonify({'error': f'Failed to retrieve alerts: {str(e)}'}), 500
+
+
+@doctor_bp.route('/alerts/<alert_id>/read', methods=['POST'])
+@token_required
+@role_required('doctor')
+def mark_alert_read(alert_id):
+    """Mark an alert as read"""
+    try:
+        firebase.mark_alert_read(alert_id)
+        return jsonify({'message': 'Alert marked as read'}), 200
+    except Exception as e:
+        return jsonify({'error': f'Failed to mark alert: {str(e)}'}), 500
+
