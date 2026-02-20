@@ -355,6 +355,54 @@ class TestSuite:
             self.failed += 1
             print(fail(f"Expected 401/403/422, got {code}"))
 
+        # ── 9a. Community — create post (patient only) ──────────────────────
+        print(hdr("9a · Community — create post"))
+        code, body = req("POST", f"{self.base}/community/posts", {
+            "title": "Recovery Progress Update",
+            "content": "I'm doing well with my recovery, pain levels are improving.",
+            "category": "inspiration"
+        }, token=self.patient_token)
+        self.assert_ok("Create community post", code, body, 201, ["message","post"])
+        post_id = None
+        if code == 201 and isinstance(body.get("post"), dict):
+            post_id = body["post"].get("post_id")
+            print(info(f"Post ID: {post_id}"))
+
+        # ── 9b. Community — list posts ────────────────────────────────────────
+        print(hdr("9b · Community — list posts"))
+        code, body = req("GET", f"{self.base}/community/posts")  # no auth needed
+        self.assert_ok("GET /community/posts", code, body, 200, ["posts","count"])
+        if code == 200:
+            print(info(f"Posts returned: {body.get('count', 0)}"))
+
+        # ── 9c. Community — get post by ID ────────────────────────────────────
+        if post_id:
+            print(hdr("9c · Community — get post details"))
+            code, body = req("GET", f"{self.base}/community/posts/{post_id}")
+            self.assert_ok("GET /community/posts/<id>", code, body, 200, ["post"])
+            if code == 200:
+                post = body.get("post", {})
+                print(info(f"Post title: {post.get('title')}  |  Comments: {post.get('comments_count')}"))
+
+        # ── 9d. Community — add comment (doctor) ──────────────────────────────
+        if post_id:
+            print(hdr("9d · Community — add comment (doctor)"))
+            code, body = req("POST", f"{self.base}/community/posts/{post_id}/comments", {
+                "content": "Great progress! Keep up the physical therapy.",
+                "is_verified_doctor": True
+            }, token=self.doctor_token)
+            self.assert_ok("Add doctor comment", code, body, 201, ["message","comment"])
+            if code == 201 and isinstance(body.get("comment"), dict):
+                print(info(f"is_verified_doctor={body['comment'].get('is_verified_doctor')}"))
+
+        # ── 9e. Community — like post ─────────────────────────────────────────
+        if post_id:
+            print(hdr("9e · Community — like post"))
+            code, body = req("POST", f"{self.base}/community/posts/{post_id}/like", {}, token=self.patient_token)
+            self.assert_ok("Like post", code, body, 200)
+            if code == 200:
+                print(info(f"Likes: {body.get('likes_count', 0)}"))
+
         self._summary()
 
     def _summary(self):
