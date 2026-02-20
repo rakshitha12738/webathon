@@ -26,8 +26,11 @@ class Config:
     QDRANT_PORT = int(os.getenv('QDRANT_PORT', 6333))
     QDRANT_COLLECTION_NAME = os.getenv('QDRANT_COLLECTION_NAME', 'discharge_documents')
     
-    # OpenAI settings (for RAG)
+    # OpenAI settings (kept for backward compat)
     OPENAI_API_KEY = os.getenv('OPENAI_API_KEY', '')
+    
+    # Gemini settings (primary AI)
+    GEMINI_API_KEY = os.getenv('GEMINI_API_KEY', '')
     
     # Embedding model
     EMBEDDING_MODEL = 'sentence-transformers/all-MiniLM-L6-v2'
