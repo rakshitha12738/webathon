@@ -40,8 +40,8 @@ export default function Login() {
                     </p>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, maxWidth: 400 }}>
-                    {[['🔒', 'JWT Auth'], ['📊', 'Risk Engine'], ['🤖', 'AI Assistant'], ['📄', 'RAG QA']].map(([icon, label]) => (
-                        <div key={label} style={{ background: 'rgba(255,255,255,.1)', padding: '14px 18px', borderRadius: 12, display: 'flex', alignItems: 'center', gap: 10 }}>
+                    {[['🔒', 'Firebase Authentication'], ['📊', 'Community Healing'], ['🤖', 'AI Assistant'], ['📄', 'Retrieval Augmented Generation']].map(([icon, label]) => (
+                        <div key={`${icon}-${label}`} style={{ background: 'rgba(255,255,255,.1)', padding: '14px 18px', borderRadius: 12, display: 'flex', alignItems: 'center', gap: 10 }}>
                             <span style={{ fontSize: 22 }}>{icon}</span>
                             <span style={{ color: 'rgba(255,255,255,.85)', fontWeight: 600, fontSize: 14 }}>{label}</span>
                         </div>

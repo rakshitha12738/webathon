@@ -224,7 +224,7 @@ export default function PatientDashboard() {
                         <div className="page-header">
                             <div>
                                 <h1>📝 Daily Log</h1>
-                                <p className="page-header-sub">Track your recovery metrics — submitted logs are analysed by the risk engine in real-time</p>
+                                <p className="page-header-sub">Track your recovery metrics — submitted logs are analysed by the AI assistant in real-time</p>
                             </div>
                         </div>
 
@@ -321,7 +321,7 @@ export default function PatientDashboard() {
                                 )}
 
                                 <div className="card animate-in-2">
-                                    <h4 className="mb-4">Risk Engine Logic</h4>
+                                    <h4 className="mb-4">AI Assistant Logic</h4>
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                                         {[
                                             { condition: 'Pain ≥ 8', result: 'needs_review', color: 'var(--risk-review)' },

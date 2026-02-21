@@ -35,15 +35,18 @@ export default function Register() {
                         <div style={{ width: 48, height: 48, borderRadius: 14, background: 'rgba(255,255,255,.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24 }}>🩺</div>
                         <h2 style={{ color: '#fff', fontSize: 28 }}>RECOVER.AI</h2>
                     </div>
-                    <h1 style={{ color: '#fff', fontSize: 38, lineHeight: 1.2, marginBottom: 16 }}>Join the future<br />of recovery care</h1>
-                    <p style={{ color: 'rgba(255,255,255,.7)', fontSize: 16, maxWidth: 380 }}>
-                        Whether you're a patient on the road to recovery or a physician monitoring outcomes — RECOVER.AI has you covered.
+                    <h1 style={{ color: '#fff', fontSize: 42, lineHeight: 1.15, marginBottom: 16 }}>
+                        Intelligent<br />Post-Discharge<br />Recovery
+                    </h1>
+                    <p style={{ color: 'rgba(255,255,255,.7)', fontSize: 17, maxWidth: 400, lineHeight: 1.6 }}>
+                        AI-powered monitoring for patients and clinicians — real-time risk assessment, adaptive guidance, and RAG-based Q&amp;A.
                     </p>
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxWidth: 360 }}>
-                    {['Personalised adaptive recovery guidance', 'Real-time AI risk assessment engine', 'RAG-powered discharge document Q&A', 'Secure role-based access control'].map(t => (
-                        <div key={t} style={{ display: 'flex', alignItems: 'center', gap: 10, color: 'rgba(255,255,255,.85)', fontSize: 14 }}>
-                            <span style={{ fontSize: 16 }}>✅</span> {t}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, maxWidth: 400 }}>
+                    {[['🔒', 'Firebase Authentication'], ['📊', 'Community Healing'], ['🤖', 'AI Assistant'], ['📄', 'Retrieval Augmented Generation']].map(([icon, label]) => (
+                        <div key={`${icon}-${label}`} style={{ background: 'rgba(255,255,255,.1)', padding: '14px 18px', borderRadius: 12, display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <span style={{ fontSize: 22 }}>{icon}</span>
+                            <span style={{ color: 'rgba(255,255,255,.85)', fontWeight: 600, fontSize: 14 }}>{label}</span>
                         </div>
                     ))}
                 </div>
