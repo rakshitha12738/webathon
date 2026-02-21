@@ -10,18 +10,20 @@ class RiskEngine:
     def __init__(self):
         self.firebase = FirebaseService()
     
-    def calculate_risk_score(self, patient_id: str, current_log: dict, recovery_profile: dict) -> dict:
+    def calculate_risk_score(self, patient_id: str, current_log: dict, recovery_profile: dict = None) -> dict:
         """
-        Calculate risk score based on current log and recovery profile
+        Calculate risk score based on current log and optional recovery profile.
+        Works without a recovery profile using sensible defaults.
         
         Args:
             patient_id: Patient user ID
             current_log: Current daily log data
-            recovery_profile: Patient recovery profile
+            recovery_profile: Patient recovery profile (optional; can be None or {})
             
         Returns:
             Dictionary with score, status, deviation_flag, and complication_index
         """
+        recovery_profile = recovery_profile or {}
         pain_level = current_log.get('pain_level', 0)
         swelling = current_log.get('swelling', False)
         sleep_hours = current_log.get('sleep_hours', 0)
@@ -54,7 +56,7 @@ class RiskEngine:
                 if status == "stable":
                     status = "monitor"
         
-        # Rule 4: Deviation from acceptable pain range
+        # Rule 4: Deviation from acceptable pain range (skipped if no recovery profile / start_date)
         start_date = recovery_profile.get('start_date')
         if start_date:
             if isinstance(start_date, str):

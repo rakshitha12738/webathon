@@ -59,7 +59,9 @@ README.md          # This file
 pip install -r requirements.txt
 ```
 
-### 3. Firebase Setup
+### 3. Firebase Setup (Required for Data Persistence)
+
+> **Important:** Without Firebase credentials, the app uses an in-memory datastore. Data (users, logs, alerts) is **lost on server restart**. For live, persistent data stored in Firestore, complete this setup.
 
 1. Create a Firebase project at https://console.firebase.google.com/
 2. Enable Firestore Database
@@ -96,14 +98,15 @@ docker run -p 6333:6333 qdrant/qdrant
 
 Use your Qdrant Cloud URL and update `QDRANT_HOST` in `.env`
 
-### 6. Firestore Collections
+### 6. Firestore Collections (Dynamic Data)
 
-The following collections will be created automatically:
-- `users` - User accounts
+All uploaded and submitted data is stored in Firestore. The following collections are used:
+- `users` - User accounts (registration)
 - `recovery_profiles` - Patient recovery profiles
-- `daily_logs` - Daily patient logs
-- `discharge_documents` - Discharge document metadata
+- `daily_logs` - Daily patient logs (submitted by patients)
 - `risk_scores` - Risk assessment scores
+- `alerts` - Doctor alerts (consecutive high-risk patients)
+- `discharge_documents` - Discharge document metadata
 
 ### 7. Run the Application
 

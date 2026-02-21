@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react'
 import { api } from '../api'
-import { STATIC_PATIENTS, STATIC_PATIENT_DETAIL } from '../demoData'
 
 /* ─── helpers ─────────────────────────── */
 const riskClass = (s) => `risk-${s}` || 'risk-stable'
@@ -67,12 +66,10 @@ export default function DoctorDashboard() {
         setLoading(true)
         try {
             const d = await api.getPatients()
-            const list = d.patients || []
-            // Use static demo data if backend returns nothing
-            setPatients(list.length > 0 ? list : STATIC_PATIENTS)
+            setPatients(d.patients || [])
         } catch (e) {
             console.error(e)
-            setPatients(STATIC_PATIENTS)
+            setPatients([])
         } finally { setLoading(false) }
     }
 
@@ -84,9 +81,8 @@ export default function DoctorDashboard() {
             const d = await api.getPatientDetails(p.id)
             setSelected(d)
         } catch (e) {
-            console.warn('API error, using demo detail data:', e.message)
-            // Merge real patient basic info with static detail structure
-            setSelected({ ...STATIC_PATIENT_DETAIL, patient: { id: p.id, name: p.name, email: p.email } })
+            console.warn('API error:', e.message)
+            setSelected({ patient: { id: p.id, name: p.name, email: p.email }, error: e.message })
         } finally { setDetailLoading(false) }
     }
 
@@ -137,6 +133,11 @@ export default function DoctorDashboard() {
                 )}
                 <div style={{ flex: 1 }} />
                 <div style={{ borderTop: '1px solid rgba(255,255,255,.1)', paddingTop: 12 }}>
+                    <div style={{ padding: '8px 12px', marginBottom: 12, background: 'rgba(255,255,255,.08)', borderRadius: 8 }}>
+                        <p style={{ color: 'rgba(255,255,255,.6)', fontSize: 10, textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 4 }}>Your Doctor ID</p>
+                        <code style={{ color: '#fff', fontWeight: 700, fontSize: 13, wordBreak: 'break-all' }}>{localStorage.getItem('user_id') || '—'}</code>
+                        <p style={{ color: 'rgba(255,255,255,.5)', fontSize: 11, marginTop: 6 }}>Share with patients when they register</p>
+                    </div>
                     <div style={{ padding: '8px 12px', fontSize: 13 }}>
                         <p style={{ color: 'rgba(255,255,255,.5)', fontSize: 11, textTransform: 'uppercase', letterSpacing: '.06em' }}>Signed in as</p>
                         <p style={{ color: '#fff', fontWeight: 600, marginTop: 2 }}>{localStorage.getItem('name') || 'Doctor'}</p>
@@ -157,7 +158,7 @@ export default function DoctorDashboard() {
                         <div className="page-header">
                             <div>
                                 <h1>Patient Roster</h1>
-                                <p className="page-header-sub">Monitoring {totalPatients} active recovery cases</p>
+                                <p className="page-header-sub">Monitoring {totalPatients} active recovery cases — live data from database</p>
                             </div>
                             <button className="btn btn-secondary" onClick={() => { loadPatients(); loadAlerts() }}>🔄 Refresh</button>
                         </div>
@@ -235,10 +236,11 @@ export default function DoctorDashboard() {
                         ) : patients.length === 0 ? (
                             <div className="card empty-state">
                                 <span>👥</span>
-                                <p>No patients assigned to you yet. Patients must add your User ID when registering.</p>
-                                <div style={{ marginTop: 16, background: 'var(--bg-2)', padding: '12px 20px', borderRadius: 10, display: 'inline-block' }}>
-                                    <p style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', marginBottom: 4 }}>Your Doctor ID</p>
-                                    <code style={{ fontWeight: 700, color: 'var(--primary)' }}>{localStorage.getItem('user_id')}</code>
+                                <p><strong>No patients in your roster yet.</strong> This dashboard shows only live data from the database.</p>
+                                <p style={{ fontSize: 14, marginTop: 12 }}>When a patient registers and enters <strong>your Doctor ID</strong> below, they will appear here. Their daily log entries will show up when they submit them.</p>
+                                <div style={{ marginTop: 20, background: 'var(--bg-2)', padding: '16px 24px', borderRadius: 10, display: 'inline-block' }}>
+                                    <p style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', marginBottom: 6 }}>Share this with patients — Your Doctor ID</p>
+                                    <code style={{ fontWeight: 700, fontSize: 16, color: 'var(--primary)' }}>{localStorage.getItem('user_id')}</code>
                                 </div>
                             </div>
                         ) : (
@@ -313,6 +315,12 @@ export default function DoctorDashboard() {
 
                         {detailLoading ? (
                             <div style={{ textAlign: 'center', padding: 60 }}>Loading patient data…</div>
+                        ) : selected?.error ? (
+                            <div className="card empty-state" style={{ padding: 48 }}>
+                                <span style={{ fontSize: 36 }}>⚠️</span>
+                                <p>Could not load patient details. {selected.error}</p>
+                                <p style={{ fontSize: 13, marginTop: 8 }}>Ensure the backend is running and Firebase is configured.</p>
+                            </div>
                         ) : selected ? (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
                                 {/* Top stats */}
@@ -399,7 +407,10 @@ export default function DoctorDashboard() {
                                 {/* Logs Table */}
                                 <div className="card animate-in-3">
                                     <div className="flex justify-between items-center mb-4">
-                                        <h3>Daily Log History ({selected.log_count} entries)</h3>
+                                        <div>
+                                            <h3>Daily Log History ({selected.log_count} entries)</h3>
+                                            <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>Live data — submitted by patient and stored in database</p>
+                                        </div>
                                         <button className="btn btn-secondary" style={{ fontSize: 12 }} onClick={() => setTab('upload')}>
                                             📤 Upload Discharge Docs
                                         </button>

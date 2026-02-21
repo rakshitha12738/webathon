@@ -44,10 +44,8 @@ def create_daily_log():
         if not (0 <= data['pain_level'] <= 10):
             return jsonify({'error': 'Pain level must be between 0 and 10'}), 400
         
-        # Get recovery profile
-        recovery_profile = firebase.get_recovery_profile_by_patient(patient_id)
-        if not recovery_profile:
-            return jsonify({'error': 'Recovery profile not found. Please contact your doctor.'}), 404
+        # Recovery profile is optional; risk engine uses defaults when missing
+        recovery_profile = firebase.get_recovery_profile_by_patient(patient_id) or {}
         
         # Prepare log data
         log_date = data.get('date', datetime.now().strftime('%Y-%m-%d'))
@@ -132,21 +130,34 @@ def get_my_logs():
 @role_required('patient')
 def get_guidance():
     """
-    Get stage-based adaptive recovery guidance
+    Get stage-based adaptive recovery guidance.
+    Returns sensible defaults when no recovery profile exists.
     """
     try:
         patient_id = request.current_user['user_id']
         
-        # Get recovery profile
         recovery_profile = firebase.get_recovery_profile_by_patient(patient_id)
-        if not recovery_profile:
-            return jsonify({'error': 'Recovery profile not found'}), 404
+        
+        # Default guidance when no recovery profile
+        if not recovery_profile or not recovery_profile.get('start_date'):
+            return jsonify({
+                'stage': 'Recovery',
+                'days_since_start': 0,
+                'focus': 'Track your symptoms and follow your care team\'s advice',
+                'recommendations': [
+                    'Log your daily pain, mood, sleep and appetite',
+                    'Contact your doctor if pain or swelling worsens',
+                    'Take prescribed medications as directed',
+                    'Keep follow-up appointments',
+                ],
+                'acceptable_pain_range': '0-5',
+                'warning_signs': ['Severe pain (8+)', 'Signs of infection', 'Excessive swelling', 'Difficulty breathing'],
+                'current_risk_status': 'stable',
+                'risk_score': 0,
+            }), 200
         
         # Calculate days since start
         start_date_str = recovery_profile.get('start_date')
-        if not start_date_str:
-            return jsonify({'error': 'Start date not found in recovery profile'}), 400
-        
         try:
             if isinstance(start_date_str, str):
                 start_date = datetime.fromisoformat(start_date_str.replace('Z', '+00:00'))

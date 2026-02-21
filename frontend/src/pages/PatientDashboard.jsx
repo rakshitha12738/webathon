@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
 import { api } from '../api'
-import { STATIC_LOGS, STATIC_GUIDANCE } from '../demoData'
 
 /* ─── helpers ───────────────────────────── */
 const riskClass = (s) => `risk-${s}` || 'risk-stable'
@@ -64,13 +63,11 @@ export default function PatientDashboard() {
                 api.getGuidance().catch(() => null),
                 api.getLogs().catch(() => ({ logs: [] }))
             ])
-            // Fall back to demo data if backend returns nothing
-            setGuidance(g && Object.keys(g).length > 0 ? g : STATIC_GUIDANCE)
-            const fetchedLogs = l?.logs || []
-            setLogs(fetchedLogs.length > 0 ? fetchedLogs : STATIC_LOGS)
+            setGuidance(g && Object.keys(g).length > 0 ? g : null)
+            setLogs(l?.logs || [])
         } catch {
-            setGuidance(STATIC_GUIDANCE)
-            setLogs(STATIC_LOGS)
+            setGuidance(null)
+            setLogs([])
         } finally { setLoading(false) }
     }
 
@@ -309,6 +306,7 @@ export default function PatientDashboard() {
                                         </h3>
                                         {logResult.success ? (
                                             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                                                <p style={{ fontSize: 13, color: 'var(--risk-stable)', fontWeight: 600 }}>Saved to database. Your doctor will see this entry on their dashboard.</p>
                                                 <div><p style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase' }}>Risk Status</p><RiskBadge status={logResult.risk_status} /></div>
                                                 <div><p style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase' }}>Risk Score</p><p style={{ fontWeight: 700, fontSize: 22 }}>{logResult.risk_score}</p></div>
                                                 <div><p style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase' }}>Deviation Flag</p><p style={{ fontWeight: 700 }}>{logResult.deviation_flag ? '⚠️ Yes' : '✅ No'}</p></div>
