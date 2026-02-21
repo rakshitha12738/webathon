@@ -3,7 +3,6 @@ Community service for managing posts and comments (Firestore + in-memory fallbac
 """
 from datetime import datetime
 import uuid
-from firebase_admin import firestore
 from app.services.firebase_service import FirebaseService
 
 
@@ -133,6 +132,7 @@ class CommunityService:
             return out
 
         # Firestore path: add comment and increment post comments_count
+        from firebase_admin import firestore
         comments_ref = self.firebase._db.collection('community_comments').document()
         comments_ref.set(comment)
 
@@ -158,6 +158,7 @@ class CommunityService:
             post['likes_count'] = post.get('likes_count', 0) + 1
             return {'post_id': post_id, 'likes_count': post['likes_count']}
 
+        from firebase_admin import firestore
         post_ref = self.firebase._db.collection('community_posts').document(post_id)
         try:
             post_ref.update({'likes_count': firestore.Increment(1)})

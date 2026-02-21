@@ -24,7 +24,7 @@ def create_app():
     app.register_blueprint(patient_bp, url_prefix='/api/patient')
     app.register_blueprint(doctor_bp, url_prefix='/api/doctor')
     app.register_blueprint(rag_bp, url_prefix='/api/rag')
-    app.register_blueprint(community_bp, url_prefix='/community')
+    app.register_blueprint(community_bp, url_prefix='/api/community')
     
     return app
 
