@@ -3,7 +3,7 @@ Flask-CORS==4.0.0
 firebase-admin==6.4.0
 bcrypt==4.1.2
 PyJWT==2.8.0
-qdrant-client==1.7.1
+py -m pip install qdrant-client==1.7.1
 sentence-transformers==2.3.1
 PyPDF2==3.0.1
 python-dotenv==1.0.0

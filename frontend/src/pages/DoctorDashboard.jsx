@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { api } from '../api'
+import CommunityList from './CommunityList'
 
 /* ─── helpers ─────────────────────────── */
 const riskClass = (s) => `risk-${s}` || 'risk-stable'
@@ -26,6 +27,7 @@ const TABS = [
     { id: 'roster', icon: '👥', label: 'Patient Roster' },
     { id: 'detail', icon: '🔍', label: 'Patient Detail' },
     { id: 'upload', icon: '📄', label: 'Upload Documents' },
+    { id: 'community', icon: '💬', label: 'Community' },
 ]
 
 export default function DoctorDashboard() {
@@ -528,6 +530,11 @@ export default function DoctorDashboard() {
                             </div>
                         </div>
                     </div>
+                )}
+
+                {/* ═══ COMMUNITY ═══ */}
+                {tab === 'community' && (
+                    <CommunityList />
                 )}
             </main>
         </div>
